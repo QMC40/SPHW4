@@ -100,164 +100,20 @@ int main(int argc, char *argv[]) {
 #include "tlpi_hdr.h"
 #include "error_functions.h"
 
-int listFd;
-long test[300000];
-//
-//int compare(const void *a, const void *b) {
-//    return (*(long *) a > *(long *) b) ? 1 : -1;
-//}
-//
-//void printArray(long A[], int size) {
-//    for (i = 0; i < size; i++) {
-//        printf("%ld ", A[i]);
-//    }
-//    printf("\n");
-//}
-//
-///* List directories files in directory 'dirPath' */
-//void listFiles(const char *dirpath) {
-//
-//    DIR *dirp;
-//    struct dirent *dp;
-//    Boolean isCurrent; /* True if 'dirpath' is "." */
-//    isCurrent = strcmp(dirpath, ".") == 0;
-//    dirp = opendir(dirpath);
-//    if (dirp == NULL) {
-//        errMsg("opendir failed on '%s'", dirpath);
-//        return;
-//    }
-///* For each entry in this directory, print directory + filename */
-//    for (;;) {
-//
-//        errno = 0; /* To distinguish error from end-of-directory */
-//        dp = readdir(dirp);
-//        if (dp == NULL) {
-//            break;
-//        }
-//
-//        if (dp->d_type == DT_DIR) {
-//            if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
-//                continue;
-//            } /* Skip . and .. */
-//            if (!isCurrent) {
-//                printf("%s/", dirpath);
-//            }
-//            printf("d-type: %s\n", dp->d_name);
-//        }
-//    }
-//    if (errno != 0) {
-//        errExit("readdir");
-//    }
-//    if (closedir(dirp) == -1) {
-//        errMsg("closedir");
-//    }
-//}
-//
-//int directoryPrint(const char *pathname, const struct stat *sbuf, int type,
-//                   struct FTW *ftwb) {
-//    switch (sbuf->st_mode & S_IFMT) { /* Print file type */
-//        case S_IFDIR:
-//            break;
-////        case S_IFREG:
-////            totalSize += sbuf->st_size;
-////            fileCount++;
-//    }
-//    printf(" %*s", 4 * ftwb->level, ""); /* Indent suitably */
-//    printf("%s\n", &pathname[ftwb->base]); /* Print basename */
-//
-//    return 0; /* Tell nftw() to continue */
-//}
-//
-//int listMaker() {
-//    int outputFd, openFlags;
-//    mode_t filePerms;
-//
-//    openFlags = O_CREAT | O_WRONLY | O_TRUNC;
-//    filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
-//                S_IROTH | S_IWOTH; /* rw-rw-rw- */
-//    outputFd = open("sizelist.txt", openFlags, filePerms);
-//    if (outputFd == -1) {
-//        perror("error opening destination file");
-//        exit(EXIT_FAILURE);
-//    }
-//    return outputFd;
-//}
-//
-//int findMedian(const char *dirpath, const struct stat *sbuf, int type,
-//               struct FTW *ftwb) {
-//    char buffer[8] = {};
-//    unsigned long temp = 0;
-//    temp = sbuf->st_size;
-//    sprintf(buffer, "%ld", temp);
-//
-//    if (S_ISREG(sbuf->st_mode)) {
-//
-////        printf("i: %d\n",i);
-////        list[i] = sbuf->st_size;
-////        if (write(listFd, buffer, 8) != 8) {
-////            perror("unable to write whole buffer");
-////            exit(EXIT_FAILURE);
-////        }
-////        write(listFd, "\n", 1);
-////        printf("buffer: %s == %ld\n", buffer, sbuf->st_size);
-////        totalSize += sbuf->st_size;
-////        fileCount++;
-////        i++;
-//    }
-//    return 0; /* Tell nftw() to continue */
-//}
-//
-////take the list of file sizes, sort and select and return median file size
-//long medianFinder() {
-//    qsort(fileSizes, fileCount, sizeof(long), compare);
-////    printArray(fileSizes, fileCount);
-//    long median = 0;
-//    //empty directory kickback
-//    if (fileCount <= 0) { return 0; }
-//    //find middle element (int div to trunc for odd count)
-//    int med = (fileCount - 1) / 2;
-//    if (fileCount % 2 == 0) {
-//        median = (fileSizes[med] + fileSizes[med + 1]) / 2;
-//    } else {
-//        median = fileSizes[med];
-//    }
-//    //test print of result, using float div for element to test even / odd list handling
-//    printf("median is: %ld @ %.1f\n", median,(fileCount-1) / 2.0);
-//    return median;
-//}
-//
-////transit the directory tree and count files
-//int counter(const char *dirpath, const struct stat *sbuf, int type,
-//            struct FTW *ftwb) {
-//    if (S_ISREG(sbuf->st_mode)) {
-//        fileCount++;
-//        totalSize += sbuf->st_size;
-//    }
-//    return 0;
-//}
-//
-//int stacker(const char *dirpath, const struct stat *sbuf, int type,
-//            struct FTW *ftwb) {
-//    if (S_ISREG(sbuf->st_mode)) {
-//        fileSizes[i] = sbuf->st_size;
-//        i++;
-//    }
-//    return 0; /* Tell nftw() to continue */
-//}
-
-
-
 int main(int argc, char *argv[]) {
 
-    if (argc > 1 && strcmp(argv[1], "--help") == 0) {
+    int listFd;
+    long median;
+    bool byDir = false; //true if to copy using median of each directory, false if just using median of all files
+
+    if (argc < 1 || strcmp(argv[1], "--help") == 0) {
         usageErr("%s [dir...]\n", argv[0]);
-    } else if (argc == 1) {/* No arguments - use current directory */
-        folderCrawler(".");
-    } else {
-        for (argv++; *argv; argv++) {
-            fileCount = 0;
-            folderCrawler(*argv);
-        }
     }
+
+    char *source = argv[1];
+    char *destination = argv[2];
+
+    median = medianFinder(source);
+    printf("median: %ld\n", median);
     return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef VERS1_MEDIANATOR_H
-#define VERS1_MEDIANATOR_H
+#ifndef VERS1_REVISED_H
+#define VERS1_REVISED_H
 
 #include <dirent.h>
 #include <sys/stat.h>
@@ -29,9 +29,9 @@ void printArray(long array[], int size) {
 //print directory contents to stdout    TESTING CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 int directoryPrint(const char *pathname, const struct stat *sbuf, int type,
                    struct FTW *ftwb) {
-        if(S_ISDIR(sbuf->st_mode)) {
-            return 0;
-        }
+    if(S_ISDIR(sbuf->st_mode)) {
+        return 0;
+    }
     printf(" %*s", 4 * ftwb->level, ""); /* Indent suitably */
     printf("%s\n", &pathname[ftwb->base]); /* Print basename */
 
@@ -82,9 +82,9 @@ long medianFinder(const char *dirpath) {
 
     fileCount = 0, totalSize = 0;
     //prints listing of directory supplied w/ *dirpath  //TESTING CODE  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if(nftw(dirpath, directoryPrint, 10, 0) != 0) {
-        errExit("unable to complete walking file tree for directory");
-    }
+//    if(nftw(dirpath, directoryPrint, 10, 0) != 0) {
+//        errExit("unable to complete walking file tree for directory");
+//    }
 
     //iteration counter set to 0 and count files in directory tree
     i = 0;
@@ -102,7 +102,7 @@ long medianFinder(const char *dirpath) {
 
     //iteration counter set to 0 and add file sizes from directory tree
     i = 0;
-   if(nftw(dirpath, stacker, 10, 0) != 0) {
+    if(nftw(dirpath, stacker, 10, 0) != 0) {
         errExit("unable to complete walking file tree for adding file sizes");
     }
 
@@ -115,4 +115,5 @@ long medianFinder(const char *dirpath) {
     //return median file size to main
     return median;
 }
-#endif //VERS1_MEDIANATOR_H
+
+#endif //VERS1_REVISED_H
