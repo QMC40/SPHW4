@@ -1,3 +1,12 @@
+/*
+###########################################################
+# Aaron Fortner                                           #
+# COSC 4348-W01                                           #
+# Systems Programming                                     #
+# Assignment 4 - multi-process file copy                  #
+###########################################################
+*/
+
 #ifndef VERS1_COPIER_H
 #define VERS1_COPIER_H
 
@@ -43,6 +52,10 @@ bool fileXerox(const char *from_path, const char *to_path) {
             perror("failed to write to destination file\n");
             return false;
         }
+    }
+    if(bytes_read < 0) {
+        perror("failed to read from source file\n");
+        return false;
     }
 
     //pull source permissions and set destination permissions to match

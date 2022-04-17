@@ -42,6 +42,10 @@ int main(int argc, char *argv[]) {
 
     char *source = argv[1];
     char *destination = argv[2];
+    //check if destination directory exists, create if it doesn't
+    if(opendir(destination) == NULL) {
+        mkdir(destination, 0777);
+    }
 
     //find median of all files in source directory and subdirectories
     median = medianFinder(source);
@@ -55,22 +59,29 @@ int main(int argc, char *argv[]) {
 
     //low child copies files smaller than median
     if(low == 0 && high == 0) {
+        printf("low child copying files less than or equal to median\n");
         if(directoryCopier(source, destination, median, 0) == -1) {
             errExit("couldn't copy directory low contents");
         }
+        printf("low child finished copying files\n");
     //high child copies files larger than median
     } else if(low != 0 && high == 0) {
+        printf("high child copying files greater than median\n");
         if(directoryCopier(source, destination, median, 1) == -1) {
             errExit("couldn't copy directory high contents");
         }
+        printf("high child finished copying files\n");
     //parent waits for children
     } else {
-        if(wait(&high) == -1) {
-            errExit("wait failed on high child");
-        }
         if(wait(&low) == -1) {
             errExit("wait failed on low child");
         }
+        if(wait(&high) == -1) {
+            errExit("wait failed on high child");
+        }
+        struct stat sourceStat;
+        stat(source, &sourceStat);
+        chmod(destination, sourceStat.st_mode);
         printf("parent process finished\n");
     }
     return 0;

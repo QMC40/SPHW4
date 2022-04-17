@@ -1,3 +1,12 @@
+/*
+###########################################################
+# Aaron Fortner                                           #
+# COSC 4348-W01                                           #
+# Systems Programming                                     #
+# Assignment 4 - multi-process file copy                  #
+###########################################################
+*/
+
 #ifndef VERS1_MEDIANATOR_H
 #define VERS1_MEDIANATOR_H
 
