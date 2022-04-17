@@ -92,7 +92,7 @@ long medianFinder(const char *dirpath) {
         errExit("unable to complete walking file tree for counting files");
     }
 
-    printf("file count: %d - total size: %ld\n", fileCount, totalSize);  //TESTING CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    printf("file count: %d - total size: %ld ", fileCount, totalSize);  //TESTING CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     //create a dynamic array large enough to hold all file sizes, exit if unable to create
     fileSizes = (long *) calloc(fileCount, sizeof(long));

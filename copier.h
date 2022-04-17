@@ -1,11 +1,3 @@
-/*
-###########################################################
-# Aaron Fortner                                           #
-# COSC 4348-W01                                           #
-# Systems Programming                                     #
-# Assignment 4 - threaded file copy                       #
-###########################################################
- */
 #ifndef VERS1_COPIER_H
 #define VERS1_COPIER_H
 
@@ -23,17 +15,20 @@
 
 #define BUFFER_SIZE 1024
 
-static char *copy_to_path;
-static char *copy_from_path;
+static char *destDir;
+static char *sourceDir;
 static bool copy_busy = false;
 static long median = 0;
 bool above = false;
 
 bool copy_file(const char *from_path, const char *to_path) {
-    if (copy_busy) {
-        printf("copy is busy\n");
-        sleep(1);
-    }
+        while (copy_busy) {
+            printf("copy is busy\n");
+            int p = 0;
+            while(p != 10000) {
+                p++;
+            }
+        }
 
     copy_busy = true;
     FILE *ff = fopen(from_path, "r");
@@ -61,10 +56,10 @@ bool copy_file(const char *from_path, const char *to_path) {
     return true;
 }
 
-static int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
-                       struct FTW *ftwb) {
+int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
+                struct FTW *ftwb) {
     char to_path[PATH_MAX];
-    sprintf(to_path, "%s/%s", copy_to_path, fpath + strlen(copy_from_path) + 1);
+    sprintf(to_path, "%s/%s", destDir, fpath + strlen(sourceDir) + 1);
 
     if (above) {
         //handle directories
@@ -84,7 +79,7 @@ static int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
         } else {
             //handle files
             if (sb->st_size > median) {
-                if(!copy_file(fpath, to_path)) {
+                if (!copy_file(fpath, to_path)) {
                     return -1;
                 }
             }
@@ -107,7 +102,7 @@ static int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
         } else {
             //handle files
             if (sb->st_size <= median) {
-            if(!copy_file(fpath, to_path)) {
+                if (!copy_file(fpath, to_path)) {
                     return -1;
                 }
             }
@@ -116,17 +111,15 @@ static int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
     return 0;
 }
 
-//copy path
-int copy_dir_contents(char *path, char *to, long med, bool high) {
+//copy source
+int directoryCopier(char *source, char *destination, long med, bool high) {
     median = med;
     above = high;
 
-    copy_to_path = to;
-    copy_from_path = path;
+    destDir = destination;
+    sourceDir = source;
 
-    int ret = nftw(path, cp_callback, 64, FTW_PHYS);
-
-    return ret == 0;
+    return (nftw(source, cp_callback, 64, FTW_PHYS) == 0) ? 0 : -1;
 }
 
 #endif //VERS1_COPIER_H
