@@ -24,84 +24,13 @@
  * • Parent must wait for children.
  */
 
-
-/*
-#include <dirent.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <signal.h>
-
-int main(int argc, char *argv[]) {
-
-    int runs = 5;
-    char *source[] = {"jobsource.txt"};
-    char *destination[] = {"jobcopy.txt"};
-    if (argc == 4) {
-        *source = (char *) argv[1];
-        *destination = (char *) argv[2];
-        runs = atoi(argv[3]);
-    }
-    for (int i = 1; i < 4097; i = i * 2) {
-        unsigned int catch = copyfile(source, destination, runs, i);
-        printf("average time to copy over %d runs with buffer size %d: %u seconds %u milliseconds\n", runs, i,
-               catch / 1000, catch % 1000);
-    }
-    exit(EXIT_SUCCESS);
-}
-
-int main(int argc, char *argv[]) {
-
-    struct dirent *dirSource;
-    struct dirent *dirDest;
-
-    DIR *source;
-    DIR *destination;
-
-    if (argc == 3) {
-        if ((source = opendir(argv[1])) == NULL) {
-            perror("Failed to open source directory");
-            return 1;
-        }
-        if ((destination = opendir(argv[2])) == NULL) {
-            perror("Failed to open destination directory");
-            return 1;
-        }
-    }else {
-        fprintf(stderr, "Usage: %s source: directory_name destination: directory_name\n", argv[0]);
-        return 1;
-    }
-
-    dirDest = readdir(destination);
-    while ((dirSource = readdir(source)) != NULL) {
-        printf("%s\n", dirSource->d_name);
-        char *destPath = malloc(255);//destination paths for I/O ops
-        strcpy(destPath,dirDest->d_name);
-        strcat(destPath,"/");
-        strcpy(destPath, dirSource->d_name);
-        mkdir(destPath,0777);
-//        printf("destPath: %s\n",destPath);
-//        mkdir(destPath,0777);
-    }
-
-    while ((closedir(source) == -1) && (errno == EINTR));
-    return 0;
-}
-
-*/
-
 #include <dirent.h>
 #include <sys/stat.h>
-#include <ftw.h>
-#include <sys/fcntl.h>
 #include <wait.h>
 #include "medianator.h"
 #include "copier.h"
 #include "tlpi_hdr.h"
 #include "error_functions.h"
-#include "directoryCopy.h"
 
 int main(int argc, char *argv[]) {
 
