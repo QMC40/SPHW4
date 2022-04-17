@@ -24,35 +24,21 @@
  * • Parent must wait for children.
  */
 
-
-/*
-#include <dirent.h>
+#include <sys/stat.h>
+#include <wait.h>
+#include "medianator.h"
+#include "copier.h"
+#include "tlpi_hdr.h"
 #include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <signal.h>
+#include "error_functions.h"
 
 int main(int argc, char *argv[]) {
 
-    int runs = 5;
-    char *source[] = {"jobsource.txt"};
-    char *destination[] = {"jobcopy.txt"};
-    if (argc == 4) {
-        *source = (char *) argv[1];
-        *destination = (char *) argv[2];
-        runs = atoi(argv[3]);
+    if (argc < 1 || strcmp(argv[1], "--help") == 0) {
+        usageErr("%s [dir...]\n", argv[0]);
     }
-    for (int i = 1; i < 4097; i = i * 2) {
-        unsigned int catch = copyfile(source, destination, runs, i);
-        printf("average time to copy over %d runs with buffer size %d: %u seconds %u milliseconds\n", runs, i,
-               catch / 1000, catch % 1000);
-    }
-    exit(EXIT_SUCCESS);
-}
-
-int main(int argc, char *argv[]) {
 
     struct dirent *dirSource;
     struct dirent *dirDest;
@@ -74,69 +60,62 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    dirDest = readdir(destination);
-    while ((dirSource = readdir(source)) != NULL) {
-        printf("%s\n", dirSource->d_name);
-        char *destPath = malloc(255);//destination paths for I/O ops
-        strcpy(destPath,dirDest->d_name);
-        strcat(destPath,"/");
-        strcpy(destPath, dirSource->d_name);
-        mkdir(destPath,0777);
-//        printf("destPath: %s\n",destPath);
-//        mkdir(destPath,0777);
+    if((dirSource = readdir(source)) == NULL) {
+        perror("Failed to read source directory");
+        return 1;
     }
 
-    while ((closedir(source) == -1) && (errno == EINTR));
-    return 0;
-}
 
-*/
-
-#include <dirent.h>
-#include <sys/stat.h>
-#include <ftw.h>
-#include <sys/fcntl.h>
-#include <wait.h>
-#include "medianator.h"
-#include "copier.h"
-#include "tlpi_hdr.h"
-#include "error_functions.h"
-#include "directoryCopy.h"
-
-int main(int argc, char *argv[]) {
-
-    pid_t high,low;
-
-    if (argc < 1 || strcmp(argv[1], "--help") == 0) {
-        usageErr("%s [dir...]\n", argv[0]);
-    }
-
-    char *source = argv[1];
-    char *destination = argv[2];
-
-    //read source information
-    struct stat srcSbuf;
-    if (stat(source, &srcSbuf) == -1) {
-        errMsg("couldn't read source file stat");
-    }
-
-    median = medianFinder(source);
-    printf("median: %ld\n", median);
-    low = fork();
-    if(low != 0) {
-        high = fork();
-    }
-
-    if(low == 0 && high == 0) {
-        if(copy_dir_contents(source, destination, median, 0) == -1) {
-            errExit("couldn't copy directory low contents");
+    long mtotalSize = 0;
+    int mfileCount = 0;
+    while(dirSource != NULL) {
+//        errno = 0;
+        if (strcmp(dirSource->d_name, ".") == 0 || strcmp(dirSource->d_name, "..") == 0) {
+            dirSource = readdir(source);
+            continue;
         }
-    } else if (high == 0) {
-        if(copy_dir_contents(source, destination, median, 1) == -1) {
-            errExit("couldn't copy directory high contents");
-        }
-    }else {
-        wait(NULL);
+        char pathname[256] = {};
+        strcat(pathname, argv[1]);
+        strcat(pathname, "/");
+        strcat(pathname, dirSource->d_name);
+        mfileCount++;
+//        printf("%s\n", dirSource->d_name);
+        struct stat fileStat;
+        stat(pathname, &fileStat);
+        mtotalSize += fileStat.st_size;
+        printf("%s - %ld\n", dirSource->d_name,fileStat.st_size);
+        dirSource = readdir(source);
     }
+
+
+//    //read source information
+//    struct stat srcSbuf;
+//    if (stat(dirSource, &srcSbuf) == -1) {
+//        errMsg("couldn't read source file stat");
+//    }
+//
+//    median = medianFinder(source);
+//    printf("median: %ld\n", median);
+//
+//
+//    pid_t high,low;
+//
+//
+//    low = fork();
+//    if(low != 0) {
+//        high = fork();
+//    }
+//
+//    if(low == 0 && high == 0) {
+//        if(copy_dir_contents(source, destination, median, 0) == -1) {
+//            errExit("couldn't copy directory low contents");
+//        }
+//    } else if (high == 0) {
+//        if(copy_dir_contents(source, destination, median, 1) == -1) {
+//            errExit("couldn't copy directory high contents");
+//        }
+//    }else {
+//        wait(NULL);
+//    }
     return 0;
 }
