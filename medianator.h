@@ -53,7 +53,7 @@ long finder() {
         median = fileSizes[med];
     }
     //test print of result, using float div for element to test even / odd list handling
-    printf("median is: %ld @ %.1f\n", median,(fileCount - 1) / 2.0);    // TESTING CODE
+//    printf("median is: %ld @ %.1f\n", median,(fileCount - 1) / 2.0);    // TESTING CODE
     return median;
 }
 
@@ -82,9 +82,9 @@ long medianFinder(const char *dirpath) {
 
     fileCount = 0, totalSize = 0;
     //prints listing of directory supplied w/ *dirpath  //TESTING CODE  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if(nftw(dirpath, directoryPrint, 10, 0) != 0) {
-        errExit("unable to complete walking file tree for directory");
-    }
+//    if(nftw(dirpath, directoryPrint, 10, 0) != 0) {
+//        errExit("unable to complete walking file tree for directory");
+//    }
 
     //iteration counter set to 0 and count files in directory tree
     i = 0;

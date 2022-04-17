@@ -10,147 +10,123 @@
 #define VERS1_COPIER_H
 
 #include <sys/types.h>
+#include <string.h>
 #include <malloc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <sys/fcntl.h>
 #include <sys/unistd.h>
+#include <stdbool.h>
+#include <sys/errno.h>
+#include "error_functions.h"
 
+#define BUFFER_SIZE 1024
 
+static char *copy_to_path;
+static char *copy_from_path;
+static bool copy_busy = false;
+static long median = 0;
+bool above = false;
 
-//int listMaker() {
-//    int outputFd, openFlags;
-//    mode_t filePerms;
-//
-//    openFlags = O_CREAT | O_WRONLY | O_TRUNC;
-//    filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
-//                S_IROTH | S_IWOTH; /* rw-rw-rw- */
-//    outputFd = open("sizelist.txt", openFlags, filePerms);
-//    if (outputFd == -1) {
-//        perror("error opening destination file");
-//        exit(EXIT_FAILURE);
-//    }
-//    return outputFd;
-//}
-//
-//int findMedian(const char *dirpath, const struct stat *sbuf, int type,
-//               struct FTW *ftwb) {
-//    char buffer[8] = {};
-//    unsigned long temp = 0;
-//    temp = sbuf->st_size;
-//    sprintf(buffer, "%ld", temp);
-//
-//    if (S_ISREG(sbuf->st_mode)) {
-//
-////        printf("i: %d\n",i);
-////        list[i] = sbuf->st_size;
-////        if (write(listFd, buffer, 8) != 8) {
-////            perror("unable to write whole buffer");
-////            exit(EXIT_FAILURE);
-////        }
-////        write(listFd, "\n", 1);
-////        printf("buffer: %s == %ld\n", buffer, sbuf->st_size);
-////        totalSize += sbuf->st_size;
-////        fileCount++;
-////        i++;
-//    }
-//    return 0; /* Tell nftw() to continue */
-//}
-//
-///* List directories files in directory 'dirPath' */
-//void listFiles(const char *dirpath) {
-//
-//    DIR *dirp;
-//    struct dirent *dp;
-//    Boolean isCurrent; /* True if 'dirpath' is "." */
-//    isCurrent = strcmp(dirpath, ".") == 0;
-//    dirp = opendir(dirpath);
-//    if (dirp == NULL) {
-//        errMsg("opendir failed on '%s'", dirpath);
-//        return;
-//    }
-///* For each entry in this directory, print directory + filename */
-//    for (;;) {
-//
-//        errno = 0; /* To distinguish error from end-of-directory */
-//        dp = readdir(dirp);
-//        if (dp == NULL) {
-//            break;
-//        }
-//
-//        if (dp->d_type == DT_DIR) {
-//            if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
-//                continue;
-//            } /* Skip . and .. */
-//            if (!isCurrent) {
-//                printf("%s/", dirpath);
-//            }
-//            printf("d-type: %s\n", dp->d_name);
-//        }
-//    }
-//    if (errno != 0) {
-//        errExit("readdir");
-//    }
-//    if (closedir(dirp) == -1) {
-//        errMsg("closedir");
-//    }
-//}
-
-unsigned int copier(char *source[], char *dest[], int runs, int buffer_Size) {
-    int inputFd, outputFd, openFlags;
-    mode_t filePerms;
-    ssize_t numRead;
-    int count = runs;
-    unsigned long total = 0;
-
-    char *buff;
-    buff = (char *) malloc(buffer_Size * sizeof(char));
-    if (buff == NULL) {
-        printf("unable to allocate memory\n");
-        exit(EXIT_FAILURE);
+bool copy_file(const char *from_path, const char *to_path) {
+    if (copy_busy) {
+        printf("copy is busy\n");
+        sleep(1);
     }
 
-    while (count) {
-        inputFd = open(*source, O_RDONLY);
-        if (inputFd == -1) {
-            perror("error opening source file");
-            exit(EXIT_FAILURE);
-        }
-        openFlags = O_CREAT | O_WRONLY | O_TRUNC;
-        filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
-                    S_IROTH | S_IWOTH; /* rw-rw-rw- */
-        outputFd = open(*dest, openFlags, filePerms);
-        if (outputFd == -1) {
-            perror("error opening destination file");
-            exit(EXIT_FAILURE);
-        }
-
-        while ((numRead = read(inputFd, buff, buffer_Size)) > 0) {
-            if (numRead == -1) {
-                perror("read error");
-                exit(EXIT_FAILURE);
-            }
-            if (write(outputFd, buff, numRead) != numRead) {
-                perror("unable to write whole buffer");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        if (close(inputFd) == -1) {
-            perror("error closing source file");
-            exit(EXIT_FAILURE);
-        }
-        if (close(outputFd) == -1) {
-            perror("error closing destination file");
-            exit(EXIT_FAILURE);
-        }
-        count--;
+    copy_busy = true;
+    FILE *ff = fopen(from_path, "r");
+    if (!ff) {
+        perror("failed to open source file\n");
+        return false;
     }
+    FILE *tf = fopen(to_path, "w");
+    if (!tf) {
+        perror("failed to open destination file\n");
+        fclose(ff);
+        return false;
+    }
+    char buffer[BUFFER_SIZE];
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, ff)) > 0) {
+        if (fwrite(buffer, 1, bytes_read, tf) != bytes_read) {
+            perror("failed to write to destination file\n");
+            return false;
+        }
+    }
+    fclose(ff);
+    fclose(tf);
+    copy_busy = false;
+    return true;
+}
 
-    unsigned long ms = total / runs;
-    free(buff);
-    return ms;
+static int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
+                       struct FTW *ftwb) {
+    char to_path[PATH_MAX];
+    sprintf(to_path, "%s/%s", copy_to_path, fpath + strlen(copy_from_path) + 1);
+
+    if (above) {
+        //handle directories
+        if (typeflag == FTW_D) {
+            //base directory, skip  it
+            if (ftwb->level == 0) {
+                return 0;
+            }
+            if (mkdir(to_path, sb->st_mode) == -1) {
+                //if the directory already exists, skip it
+                if (errno == EEXIST) {
+                    return 0;
+                }
+                perror("failed to mkdir: \n");
+                return -1;
+            }
+        } else {
+            //handle files
+            if (sb->st_size > median) {
+                if(!copy_file(fpath, to_path)) {
+                    return -1;
+                }
+            }
+        }
+    } else {
+        //handle directories
+        if (typeflag == FTW_D) {
+            //base directory, skip  it
+            if (ftwb->level == 0) {
+                return 0;
+            }
+            if (mkdir(to_path, sb->st_mode) == -1) {
+                //if the directory already exists, skip it
+                if (errno == EEXIST) {
+                    return 0;
+                }
+                perror("failed to mkdir: \n");
+                return -1;
+            }
+        } else {
+            //handle files
+            if (sb->st_size <= median) {
+            if(!copy_file(fpath, to_path)) {
+                    return -1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+//copy path
+int copy_dir_contents(char *path, char *to, long med, bool high) {
+    median = med;
+    above = high;
+
+    copy_to_path = to;
+    copy_from_path = path;
+
+    int ret = nftw(path, cp_callback, 64, FTW_PHYS);
+
+    return ret == 0;
 }
 
 #endif //VERS1_COPIER_H

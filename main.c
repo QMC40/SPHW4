@@ -96,15 +96,16 @@ int main(int argc, char *argv[]) {
 #include <sys/stat.h>
 #include <ftw.h>
 #include <sys/fcntl.h>
+#include <wait.h>
 #include "medianator.h"
+#include "copier.h"
 #include "tlpi_hdr.h"
 #include "error_functions.h"
+#include "directoryCopy.h"
 
 int main(int argc, char *argv[]) {
 
-    int listFd;
-    long median;
-    bool byDir = false; //true if to copy using median of each directory, false if just using median of all files
+    pid_t high,low;
 
     if (argc < 1 || strcmp(argv[1], "--help") == 0) {
         usageErr("%s [dir...]\n", argv[0]);
@@ -113,7 +114,29 @@ int main(int argc, char *argv[]) {
     char *source = argv[1];
     char *destination = argv[2];
 
+    //read source information
+    struct stat srcSbuf;
+    if (stat(source, &srcSbuf) == -1) {
+        errMsg("couldn't read source file stat");
+    }
+
     median = medianFinder(source);
     printf("median: %ld\n", median);
+    low = fork();
+    if(low != 0) {
+        high = fork();
+    }
+
+    if(low == 0 && high == 0) {
+        if(copy_dir_contents(source, destination, median, 0) == -1) {
+            errExit("couldn't copy directory low contents");
+        }
+    } else if (high == 0) {
+        if(copy_dir_contents(source, destination, median, 1) == -1) {
+            errExit("couldn't copy directory high contents");
+        }
+    }else {
+        wait(NULL);
+    }
     return 0;
 }
