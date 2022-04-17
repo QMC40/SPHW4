@@ -11,7 +11,7 @@
  * take as input two paths: a path to a source directory and a path to the destination directory. Your
  * code should satisfy the followings:
  * 1. You should use three processes: the parent and two children.
- * 2. Initially, the parent scans the source directory for files and sub-directories, and compute the total
+ * 2. Initially, the parent scans the source directory for files and subdirectories, and compute the total
  * size of the files in this directory. The parent then creates two children to copy the specified
  * directory. The parent should divide the tasks as follows:
  * • Find the median of the file sizes.
@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
         if(wait(&low) == -1) {
             errExit("wait failed on low child");
         }
+        printf("parent process finished\n");
     }
     return 0;
 }

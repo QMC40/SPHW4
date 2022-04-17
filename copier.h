@@ -17,92 +17,78 @@
 
 static char *destDir;
 static char *sourceDir;
-static bool copy_busy = false;
 static long median = 0;
 bool above = false;
 
-bool copy_file(const char *from_path, const char *to_path) {
-        while (copy_busy) {
-            printf("copy is busy\n");
-            int p = 0;
-            while(p != 10000) {
-                p++;
-            }
-        }
+bool fileXerox(const char *from_path, const char *to_path) {
 
-    copy_busy = true;
-    FILE *ff = fopen(from_path, "r");
-    if (!ff) {
+    //open source file object
+    FILE *fromFile = fopen(from_path, "r");
+    if (!fromFile) {
         perror("failed to open source file\n");
         return false;
     }
-    FILE *tf = fopen(to_path, "w");
-    if (!tf) {
+    //open destination file object
+    FILE *toFile = fopen(to_path, "w");
+    if (!toFile) {
         perror("failed to open destination file\n");
-        fclose(ff);
+        fclose(fromFile);
         return false;
     }
     char buffer[BUFFER_SIZE];
     size_t bytes_read;
-    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, ff)) > 0) {
-        if (fwrite(buffer, 1, bytes_read, tf) != bytes_read) {
+    //read from source file and write to destination file
+    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, fromFile)) > 0) {
+        if (fwrite(buffer, 1, bytes_read, toFile) != bytes_read) {
             perror("failed to write to destination file\n");
             return false;
         }
     }
-    fclose(ff);
-    fclose(tf);
-    copy_busy = false;
+
+    //pull source permissions and set destination permissions to match
+    struct stat fromFileStat;
+    stat(from_path, &fromFileStat);
+    chmod(to_path, fromFileStat.st_mode);
+
+    //close files
+    fclose(fromFile);
+    fclose(toFile);
     return true;
 }
 
-int cp_callback(const char *fpath, const struct stat *sb, int typeflag,
+int copyControl(const char *from_path, const struct stat *sbuf, int type,
                 struct FTW *ftwb) {
+    //make a string for the destination path (set max length to 256) and copy
+    //dest path to it
     char to_path[PATH_MAX];
-    sprintf(to_path, "%s/%s", destDir, fpath + strlen(sourceDir) + 1);
+    sprintf(to_path, "%s/%s", destDir, from_path + strlen(sourceDir) + 1);
 
-    if (above) {
-        //handle directories
-        if (typeflag == FTW_D) {
-            //base directory, skip  it
-            if (ftwb->level == 0) {
+    //handle directories
+    if (type == FTW_D) {
+        //base directory, skip  it otherwise creates the directory and ignore error if it already exists
+        if (ftwb->level == 0) {
+            return 0;
+        }
+        if (mkdir(to_path, sbuf->st_mode) == -1) {
+            //ignore error if due to directory already exists
+            if (errno == EEXIST) {
                 return 0;
             }
-            if (mkdir(to_path, sb->st_mode) == -1) {
-                //if the directory already exists, skip it
-                if (errno == EEXIST) {
-                    return 0;
-                }
-                perror("failed to mkdir: \n");
-                return -1;
-            }
-        } else {
-            //handle files
-            if (sb->st_size > median) {
-                if (!copy_file(fpath, to_path)) {
+            perror("failed to mkdir: \n");
+            return -1;
+        }
+    } else {
+        //handle files
+        // determine if this process is doing highs or lows, skip anything outside assigned range
+        if (above) {
+            if (sbuf->st_size > median) {
+                if (!fileXerox(from_path, to_path)) {
                     return -1;
                 }
             }
-        }
-    } else {
-        //handle directories
-        if (typeflag == FTW_D) {
-            //base directory, skip  it
-            if (ftwb->level == 0) {
-                return 0;
-            }
-            if (mkdir(to_path, sb->st_mode) == -1) {
-                //if the directory already exists, skip it
-                if (errno == EEXIST) {
-                    return 0;
-                }
-                perror("failed to mkdir: \n");
-                return -1;
-            }
         } else {
-            //handle files
-            if (sb->st_size <= median) {
-                if (!copy_file(fpath, to_path)) {
+            if (sbuf->st_size < median) {
+                if (!fileXerox(from_path, to_path)) {
                     return -1;
                 }
             }
@@ -119,7 +105,8 @@ int directoryCopier(char *source, char *destination, long med, bool high) {
     destDir = destination;
     sourceDir = source;
 
-    return (nftw(source, cp_callback, 64, FTW_PHYS) == 0) ? 0 : -1;
+    //start file walker with source directory w/out de-referencing soft links
+    return (nftw(source, copyControl, 64, FTW_PHYS) == 0) ? 0 : -1;
 }
 
 #endif //VERS1_COPIER_H
