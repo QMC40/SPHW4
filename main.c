@@ -44,7 +44,11 @@ int main(int argc, char *argv[]) {
     char *destination = argv[2];
     //check if destination directory exists, create if it doesn't
     if(opendir(destination) == NULL) {
-        mkdir(destination, 0777);
+        struct stat sourceStat;
+        stat(source, &sourceStat);
+        if(mkdir(destination, sourceStat.st_mode) == -1) {
+            errExit("destination directory doesn't exist and unable to create it\n");
+        }
     }
 
     //find median of all files in source directory and subdirectories
@@ -52,9 +56,14 @@ int main(int argc, char *argv[]) {
     printf("median file size: %ld\n", median);
 
     //fork two children to copy files
-    low = fork();
+    if((low = fork()) == -1) {
+        errExit("failed to fork low copy child process\n");
+    }
+    //only parent process will fork high copy child
     if(low != 0) {
-        high = fork();
+        if((high = fork()) == -1) {
+            errExit("failed to fork high copy child process\n");
+        }
     }
 
     //low child copies files smaller than median
@@ -79,9 +88,6 @@ int main(int argc, char *argv[]) {
         if(wait(&high) == -1) {
             errExit("wait failed on high child");
         }
-        struct stat sourceStat;
-        stat(source, &sourceStat);
-        chmod(destination, sourceStat.st_mode);
         printf("parent process finished\n");
     }
     return 0;
